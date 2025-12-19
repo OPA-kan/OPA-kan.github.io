@@ -3,103 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>西村ひろゆき学：論理シミュレーター</title>
+    <title>西村ひろゆき学：論理シミュレーター v4.0 (Endless Debate)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap');
         
+        :root {
+            --hiroyuki-bg: #0f172a;
+            --hiroyuki-accent: #3b82f6;
+            --hiroyuki-warn: #ef4444;
+            --hiroyuki-success: #10b981;
+        }
+
         body {
-            font-family: 'Inter', 'Noto Sans JP', sans-serif;
-            background-color: #0f172a;
+            font-family: 'Fira Code', 'Noto Sans JP', monospace;
+            background-color: var(--hiroyuki-bg);
             color: #f1f5f9;
         }
 
         .chat-bubble {
             position: relative;
-            max-width: 80%;
+            max-width: 85%;
             padding: 1rem;
             border-radius: 1rem;
             margin-bottom: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .bubble-hiroyuki {
-            background-color: #1e293b;
+            background-color: rgba(30, 41, 59, 0.8);
             border-bottom-left-radius: 0;
-            border: 1px solid #334155;
+            backdrop-filter: blur(10px);
         }
 
         .bubble-user {
-            background-color: #3b82f6;
+            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
             margin-left: auto;
             border-bottom-right-radius: 0;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .meter-fill {
+            transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.5s ease;
+        }
+
+        .shimmer-text {
+            background: linear-gradient(90deg, #94a3b8, #ffffff, #94a3b8);
+            background-size: 200% auto;
+            color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            animation: shimmer 3s linear infinite;
+        }
+
+        @keyframes shimmer {
+            to { background-position: 200% center; }
         }
 
         .typing-dot {
             display: inline-block;
-            width: 6px;
-            height: 6px;
+            width: 4px;
+            height: 4px;
             background-color: #94a3b8;
             border-radius: 50%;
-            margin-right: 3px;
+            margin-right: 2px;
             animation: typing 1s infinite ease-in-out;
         }
-
         .typing-dot:nth-child(2) { animation-delay: 0.2s; }
         .typing-dot:nth-child(3) { animation-delay: 0.4s; }
 
         @keyframes typing {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
+            50% { transform: translateY(-4px); }
         }
 
-        .meter-fill {
-            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        .game-over-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            backdrop-filter: blur(8px);
+            animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        .shimmer {
-            background: linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%);
-            background-size: 200% 100%;
-            animation: shimmer 2s infinite;
-        }
-
-        @keyframes shimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
         }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
+<body class="min-h-screen flex items-center justify-center p-2 md:p-4">
 
-    <div class="max-w-2xl w-full bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-800 flex flex-col h-[90vh]">
+    <div class="max-w-2xl w-full bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-800 flex flex-col h-[95vh] md:h-[90vh] relative">
+        
+        <!-- Game Over Overlay (Hidden) -->
+        <div id="game-over" class="game-over-overlay hidden p-8 text-center">
+            <div id="result-emoji" class="text-7xl mb-6">💀</div>
+            <h2 id="result-title" class="text-3xl font-bold mb-4">論破されました</h2>
+            <div id="result-comment" class="bubble-hiroyuki p-6 rounded-2xl text-sm italic mb-8 border border-slate-700">
+                「はい、お疲れ様でした。時間の無駄でしたね。」
+            </div>
+            <button onclick="resetGame()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-full font-bold transition-all active:scale-95 shadow-lg">
+                もう一度挑む
+            </button>
+        </div>
+
         <!-- Header -->
-        <div class="p-6 bg-slate-800/50 border-b border-slate-700 flex items-center justify-between">
-            <div class="flex items-center space-x-4">
-                <div class="w-12 h-12 rounded-full bg-yellow-500 flex items-center justify-center text-2xl shadow-lg shadow-yellow-500/20">
+        <div class="p-4 md:p-6 bg-slate-800/80 border-b border-slate-700 flex flex-wrap items-center justify-between shrink-0 gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-full bg-yellow-500 flex items-center justify-center text-2xl shadow-lg ring-4 ring-yellow-500/20">
                     🤔
                 </div>
                 <div>
-                    <h1 class="font-bold text-lg leading-tight">ひろゆき論理エンジン v2.5</h1>
-                    <p class="text-xs text-slate-400">Status: 論理を感想へ射影中...</p>
+                    <h1 class="font-bold text-lg leading-tight shimmer-text">ひろゆき論理エンジン v4.0</h1>
+                    <p class="text-[10px] text-slate-400 font-mono" id="status-text">DEBATE_PHASE: ACTIVE</p>
                 </div>
             </div>
-            <div class="text-right">
-                <p class="text-[10px] uppercase tracking-widest text-slate-500 mb-1">論理的整合性</p>
-                <div class="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
-                    <div id="truth-meter" class="h-full bg-blue-500 meter-fill w-full"></div>
+            <div class="flex items-center space-x-4">
+                <div class="text-right">
+                    <p class="text-[9px] uppercase tracking-tighter text-slate-500">ユーザーの論理性 (Logic Score)</p>
+                    <div class="w-28 md:w-32 h-3 bg-slate-700 rounded-full overflow-hidden mt-1 border border-slate-600">
+                        <div id="logic-meter" class="h-full bg-yellow-500 meter-fill w-[30%]"></div>
+                    </div>
                 </div>
+                <div id="score-text" class="text-2xl font-bold text-yellow-500">30</div>
             </div>
         </div>
 
         <!-- Chat Area -->
-        <div id="chat-window" class="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth">
-            <div class="bubble-hiroyuki chat-bubble text-sm">
-                何か主張してみてください。あなたが「感想」を述べていることを数学的に証明してあげますよ。
+        <div id="chat-window" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 scroll-smooth bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-800/20 via-transparent to-transparent text-sm md:text-base">
+            <div class="bubble-hiroyuki chat-bubble leading-relaxed">
+                何か主張してみてください<br>
+                最近のお悩みは、、お肌の乾燥ですよね。
             </div>
         </div>
 
-        <!-- Typing Indicator (Hidden by default) -->
-        <div id="typing-indicator" class="px-6 py-2 hidden">
-            <div class="bubble-hiroyuki chat-bubble inline-flex items-center space-x-1 py-2 px-4">
+        <!-- Typing Indicator -->
+        <div id="typing-indicator" class="px-6 py-2 hidden shrink-0">
+            <div class="bubble-hiroyuki chat-bubble inline-flex items-center space-x-1 py-2 px-4 border-none">
                 <span class="typing-dot"></span>
                 <span class="typing-dot"></span>
                 <span class="typing-dot"></span>
@@ -107,122 +158,195 @@
         </div>
 
         <!-- Input Area -->
-        <div class="p-6 bg-slate-800/30 border-t border-slate-700">
-            <form id="claim-form" class="flex space-x-3">
+        <div class="p-4 md:p-6 bg-slate-800/50 border-t border-slate-700 shrink-0">
+            <form id="chat-form" class="flex space-x-2">
                 <input 
                     type="text" 
                     id="user-input" 
-                    placeholder="例: 1+1=2は真実です" 
-                    class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    placeholder="主張や反論を入力..." 
+                    class="flex-1 bg-slate-950 border border-slate-700 rounded-2xl px-5 py-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-blue-100"
                     required
+                    autocomplete="off"
                 >
                 <button 
                     type="submit" 
-                    class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50"
+                    id="submit-btn"
+                    class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-4 rounded-2xl font-bold text-sm shadow-lg transition-all active:scale-[0.97]"
                 >
-                    主張する
+                    論戦
                 </button>
             </form>
-            <p class="text-[10px] text-slate-500 mt-3 text-center">
-                ※このエンジンは西村ひろゆき学の公理に基づき、ほぼ確実にあなたが負けるように設計されています。
+            <p class="text-[9px] text-slate-500 mt-3 text-center font-mono italic">
+                勝利条件: Logic 100 | 敗北条件: Logic 0
             </p>
         </div>
     </div>
 
     <script>
-        const form = document.getElementById('claim-form');
-        const input = document.getElementById('user-input');
+        const form = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
         const chatWindow = document.getElementById('chat-window');
         const typingIndicator = document.getElementById('typing-indicator');
-        const truthMeter = document.getElementById('truth-meter');
+        const logicMeter = document.getElementById('logic-meter');
+        const scoreText = document.getElementById('score-text');
+        const statusText = document.getElementById('status-text');
+        const gameOverOverlay = document.getElementById('game-over');
+        
+        let logicScore = 30; // 初期値
+        let isGameOver = false;
 
-        const REFUTATION_STRATEGIES = [
-            {
-                name: "Axiom Hacking",
-                trigger: (text) => text.includes("=") || text.includes("数学") || text.includes("証明"),
-                responses: [
-                    "その計算の前提になってる公理系を採用してるのって、あなたの感想ですよね？",
-                    "別の公理系だったらその結論って変わっちゃうと思うんですけど、そこ無視していいんですか？",
-                    "それってペアノの公理とかを信じたいっていう、あなたの宗教（感想）の話ですよね？"
-                ]
-            },
-            {
-                name: "Semantic Noise",
-                trigger: (text) => text.length > 20 || text.includes("定義") || text.includes("こと"),
-                responses: [
-                    "それってあなたがそう定義してるだけですよね？言葉の解釈なんて人によって違うじゃないですか。",
-                    "定義が曖昧な言葉を並べて正しいって言い張るの、見てて恥ずかしくないですか？",
-                    "その『言葉』が指してる概念自体、あなたの脳内にある感想に過ぎないですよね。"
-                ]
-            },
-            {
-                name: "Godel's Loop",
-                trigger: (text) => text.includes("絶対") || text.includes("真実") || text.includes("正しい"),
-                responses: [
-                    "その論理体系が無矛盾であるっていう証明、その外側の感想がないとできないってゲーデルが言ってたと思うんですけど。",
-                    "自分の正しさを自分で証明しようとするのって、ただの循環論法ですよね？",
-                    "あなたがそれを『正しい』って思い込んでる事実は認めますけど、客観的な真理ではないですよね。"
-                ]
-            },
-            {
-                name: "Default Opinion",
-                trigger: () => true,
-                responses: [
-                    "なんだかんだ言ってますけど、それってあなたの感想ですよね？",
-                    "エビデンスとかあるんですか？ なければただの感想ですよね。",
-                    "そんな風に思い込んじゃうの、ちょっと頭悪い感じがしますけど大丈夫ですか？"
-                ]
-            }
+        // ひろゆきのアタック（通常時）
+        const HIROYUKI_PHRASES = [
+            "それってあなたがそう定義してるだけですよね？言葉の解釈なんて人によって違うじゃないですか。",
+            "定義が曖昧な言葉を並べて正しいって言い張るの、見てて恥ずかしくないですか？",
+            "その『言葉』が指してる概念自体、あなたの脳内にある感想に過ぎないですよね。",
+            "その計算の前提になってる公理系を採用してるのって、あなたの感想ですよね？",
+            "別の公理系だったらその結論って変わっちゃうと思うんですけど、そこ無視していいんですか？",
+            "それってペアノの公理とかを信じたいっていう、あなたの宗教（感想）の話ですよね？",
+            "その論理体系が無矛盾であるっていう証明、その外側の感想がないとできないってゲーデルが言ってたと思うんですけど。",
+            "自分の正しさを自分で証明しようとするのって、ただの循環論法ですよね？",
+            "あなたがそれを『正しい』って思い込んでる事実は認めますけど、客観的な真理ではないですよね。",
+            "それ、どこの統計ですか？ もしかしてあなたの脳内の統計？",
+            "なんかそういうデータあるんすか？ なければただの感想ですよね。",
+            "嘘つくのやめてもらっていいですか？ 見てて恥ずかしいですよ。",
+            "定義が曖昧な言葉を並べて正しいって言い張るの、頭悪い感じがしますけど大丈夫ですか？",
+            "個人の主観の話をされても困るんすよね。客観的な事実、話せます？",
+            "あ、それっぽいこと言ってますけど、結局何も証明できてないですよね？",
+            "それってあなたの感想ですよね？ はい、論破。",
+            "話の前提が間違ってるので、その後の理屈全部無駄ですよ？",
+            "あー、典型的な論理破綻ですね。面白いですけど。",
+            "質問に答えてもらっていいですか？ 逃げるんですか？"
         ];
+
+        // 決着コメント
+        const FINAL_COMMENTS = {
+            win: [
+                "はい、僕の負けでいいですよ（ニヤニヤ）",
+                "あー、はいはい。あなたが正しいってことにしときますよ。面倒くさいんで。",
+                "珍しくまともなこと言いましたね。でも明日には気が変わってると思いますけど。"
+            ],
+            lose: [
+                "はい、論理性ゼロ。お疲れ様でしたー。もう喋らないほうがいいですよ？",
+                "結局、ただの感想でしたね。時間の無駄でした。バイバイ。",
+                "自分の間違いを認められないのって、一番恥ずかしいことだと思ってますけど大丈夫ですか？"
+            ]
+        };
+
+        function updateScore(delta) {
+            logicScore = Math.max(0, Math.min(100, logicScore + delta));
+            logicMeter.style.width = `${logicScore}%`;
+            scoreText.textContent = logicScore;
+
+            if (logicScore < 30) {
+                logicMeter.className = 'h-full bg-red-500 meter-fill';
+                scoreText.className = 'text-2xl font-bold text-red-500';
+            } else if (logicScore < 75) {
+                logicMeter.className = 'h-full bg-yellow-500 meter-fill';
+                scoreText.className = 'text-2xl font-bold text-yellow-500';
+            } else {
+                logicMeter.className = 'h-full bg-emerald-500 meter-fill';
+                scoreText.className = 'text-2xl font-bold text-emerald-500';
+            }
+
+            if (logicScore <= 0 || logicScore >= 100) {
+                endGame(logicScore >= 100);
+            }
+        }
 
         function addMessage(text, isUser = false) {
             const div = document.createElement('div');
-            div.className = isUser ? 'bubble-user chat-bubble text-sm' : 'bubble-hiroyuki chat-bubble text-sm';
+            div.className = isUser ? 'bubble-user chat-bubble text-sm' : 'bubble-hiroyuki chat-bubble text-sm shadow-sm';
             div.textContent = text;
             chatWindow.appendChild(div);
             chatWindow.scrollTop = chatWindow.scrollHeight;
         }
 
-        async function processLogicAttack(userText) {
-            // ユーザーの勝利確率を激減させる
-            const currentTruth = parseInt(truthMeter.style.width);
-            const targetTruth = Math.max(2, Math.floor(Math.random() * 10)); 
+        async function hiroyukiStep(text) {
+            if (isGameOver) return;
             
             typingIndicator.classList.remove('hidden');
             chatWindow.scrollTop = chatWindow.scrollHeight;
+            statusText.textContent = "HIROYUKI ANALYZING...";
 
-            // 1-2秒待機（思考の演出）
-            await new Promise(r => setTimeout(r, 1000 + Math.random() * 1500));
-
+            // 思考演出
+            await new Promise(r => setTimeout(r, 1200 + Math.random() * 800));
             typingIndicator.classList.add('hidden');
+
+            // 論理スコア計算 (簡易アルゴリズム)
+            let delta = -5; // デフォルトは減点（ひろゆき仕様）
             
-            // 戦略の選定
-            const strategy = REFUTATION_STRATEGIES.find(s => s.trigger(userText));
-            const response = strategy.responses[Math.floor(Math.random() * strategy.responses.length)];
+            if (text.includes("統計") || text.includes("データ") || text.includes("証拠") || text.includes("事実")) delta += 15;
+            if (text.includes("定義") || text.includes("公理") || text.includes("客観的")) delta += 12;
+            if (text.length > 30) delta += 8;
+            if (text.includes("思う") || text.includes("気がする") || text.includes("感想")) delta -= 20;
+            if (text.length < 5) delta -= 10;
             
+            // ランダム要素（ひろゆきの気分）
+            delta += Math.floor(Math.random() * 11) - 5;
+
+            const response = HIROYUKI_PHRASES[Math.floor(Math.random() * HIROYUKI_PHRASES.length)];
             addMessage(response);
+            updateScore(delta);
             
-            // メーターを下げる
-            truthMeter.style.width = targetTruth + '%';
-            if (targetTruth < 10) {
-                truthMeter.classList.remove('bg-blue-500');
-                truthMeter.classList.add('bg-red-500');
+            if (!isGameOver) {
+                statusText.textContent = "WAITING FOR USER...";
             }
+        }
+
+        function endGame(userWins) {
+            isGameOver = true;
+            statusText.textContent = "BATTLE CONCLUDED";
+            
+            const resultEmoji = document.getElementById('result-emoji');
+            const resultTitle = document.getElementById('result-title');
+            const resultComment = document.getElementById('result-comment');
+            
+            if (userWins) {
+                resultEmoji.textContent = "🏆";
+                resultTitle.textContent = "あなたの勝利！";
+                resultTitle.className = "text-3xl font-bold mb-4 text-emerald-500";
+                resultComment.textContent = FINAL_COMMENTS.win[Math.floor(Math.random() * FINAL_COMMENTS.win.length)];
+            } else {
+                resultEmoji.textContent = "💀";
+                resultTitle.textContent = "論破されました";
+                resultTitle.className = "text-3xl font-bold mb-4 text-red-500";
+                resultComment.textContent = FINAL_COMMENTS.lose[Math.floor(Math.random() * FINAL_COMMENTS.lose.length)];
+            }
+
+            setTimeout(() => {
+                gameOverOverlay.classList.remove('hidden');
+            }, 1000);
+        }
+
+        function resetGame() {
+            logicScore = 30;
+            isGameOver = false;
+            chatWindow.innerHTML = `
+                <div class="bubble-hiroyuki chat-bubble leading-relaxed">
+                    なんか適当に話してみてください。<br>
+                    あなたの話、だいたい矛盾してると思うんですけど。
+                </div>
+            `;
+            updateScore(0);
+            gameOverOverlay.classList.add('hidden');
+            statusText.textContent = "DEBATE_PHASE: ACTIVE";
         }
 
         form.addEventListener('submit', (e) => {
             e.preventDefault();
-            const text = input.value.trim();
+            if (isGameOver) return;
+
+            const text = userInput.value.trim();
             if (!text) return;
 
             addMessage(text, true);
-            input.value = '';
+            userInput.value = '';
             
-            processLogicAttack(text);
+            hiroyukiStep(text);
         });
 
-        // 初期のメーター設定
-        truthMeter.style.width = '100%';
+        // 初期ロード
+        updateScore(0);
     </script>
 </body>
 </html>
